@@ -1,4 +1,2 @@
 .env
-personality.txt
-memory.json
-text.json
+short_term_memory.json
