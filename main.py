@@ -120,7 +120,6 @@ def process_file(path: str) -> list:
 
 if __name__ == "__main__":
     input_file =  DEFAULT_INPUT
-
     print(f"开始读取输入：{input_file}\n" + "=" * 60)
     process_file(input_file)
     
