@@ -22,3 +22,6 @@ class MemoryRecord(BaseModel):
     interest_score: int = Field(
         ge=0, le=100, description="兴趣点打分 0-100"
     )
+    worth_evaluation:int = Field(
+        ge=0, le=1, description="是否值得留存"
+     )

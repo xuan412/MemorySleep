@@ -36,6 +36,7 @@ SYSTEM_PROMPT = """你是「林一鸣」本人的记忆编码系统。
 2. raw_content 必须原样复制我给你的片段，一个字都不要改；
 3. timestamp 直接填我给你的当前时间，不要自己编；
 4. 四个分数都要根据上面的口径认真区分高低，不要都给 50 这种中间值。
+5.判断这条记忆是否值得留存
 
 """
 #==========================
@@ -110,6 +111,7 @@ def process_file(path: str) -> list:
             f"打分：情感冲击 {record.emotional_impact} | 动机吻合 {record.motivation_match} "
             f"| 反常程度 {record.anomaly} | 兴趣指数 {record.interest_score}\n"
         )
+        print(f"是否留存：{record.worth_evaluation}")
         results.append(record)
 
     return results
