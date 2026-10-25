@@ -3,20 +3,21 @@ import os
 
 from dotenv import load_dotenv
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_deepseek import ChatDeepSeek
 
 import short_memory_store
+from models import get_llm
 from persona import MOTIVATION, PERSONA, SCORING_RULES
 from schemas import MemoryRecord
 from tools import ask_model_for_time
 
-load_dotenv()                       # 从 .env 读 DEEPSEEK_API_KEY
+load_dotenv()                       # 从 .env 读密钥和模型配置
 
 DEFAULT_INPUT = "information.txt"
 
 # ========== 模型 ==========
+# 想换模型改 .env 就行，创建逻辑都在 models.py 里
 
-llm = ChatDeepSeek(model="deepseek-chat", temperature=0.2)
+llm = get_llm()
 
 # ========== 提示词==========
 SYSTEM_PROMPT = """你是「林一鸣」本人的记忆编码系统。
@@ -99,8 +100,9 @@ def process_file(path: str) -> list:
 
         
         record.timestamp = current_time
-        
+
         record.raw_content = information
+        record.repeat_count = 1  # 重复判断还没做，先都记成 1
 
         # 【写入短期记忆】落盘到 JSON 记忆库
         short_memory_store.append_record(record)
@@ -108,7 +110,8 @@ def process_file(path: str) -> list:
         print(f"概括：{record.summary}")
         print(
             f"打分：情感冲击 {record.emotional_impact} | 动机吻合 {record.motivation_match} "
-            f"| 反常程度 {record.anomaly} | 兴趣指数 {record.interest_score}\n"
+            f"| 反常程度 {record.anomaly} | 兴趣指数 {record.interest_score} "
+            f"| 重复次数 {record.repeat_count}\n"
         )
         results.append(record)
 

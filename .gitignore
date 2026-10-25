@@ -1,3 +1,4 @@
 .env
 short_term_memory.json
 __pycache__
+.venv

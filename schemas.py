@@ -22,3 +22,8 @@ class MemoryRecord(BaseModel):
     interest_score: int = Field(
         ge=0, le=100, description="兴趣点打分 0-100"
     )
+    repeat_count: int = Field(
+        default=1,
+        ge=1,
+        description="重复次数：这条内容是第几次出现，新记忆填 1",
+    )
