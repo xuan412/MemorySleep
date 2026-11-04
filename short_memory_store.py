@@ -4,8 +4,9 @@ import os
 
 from schemas import MemoryRecord
 
-# 短期记忆库文件（就在当前目录下）
-MEMORY_FILE = "short_term_memory.json"
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MEMORY_FILE = os.path.join(BASE_DIR, "short_term_memory.json")
 
 
 def load_memory() -> list:

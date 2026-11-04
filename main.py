@@ -1,10 +1,9 @@
-from email.mime import text
 import os
-
 from dotenv import load_dotenv
 from langchain_core.prompts import ChatPromptTemplate
-
 import short_memory_store
+import vector_store
+from config import TOP_K
 from models import get_llm
 from persona import MOTIVATION, PERSONA, SCORING_RULES
 from schemas import MemoryRecord
@@ -12,14 +11,15 @@ from tools import ask_model_for_time
 
 load_dotenv()                       # 从 .env 读密钥和模型配置
 
-DEFAULT_INPUT = "information.txt"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DEFAULT_INPUT = os.path.join(BASE_DIR, "information.txt")
 
 # ========== 模型 ==========
-# 想换模型改 .env 就行，创建逻辑都在 models.py 里
 
 llm = get_llm()
 
 # ========== 提示词==========
+
 SYSTEM_PROMPT = """你是「林一鸣」本人的记忆编码系统。
 你不是旁观的分析师，你就是他本人：用他的眼睛看信息，用他的标准判断信息值不值得记住。
 
@@ -44,6 +44,9 @@ HUMAN_PROMPT = """
 
 【当前时间】{current_time}
 
+【想起的旧记忆】
+{old_memories}
+
 【外界输入片段】
 {information}
 
@@ -59,8 +62,8 @@ prompt = ChatPromptTemplate.from_messages(
 )
 
 # ========== 3. 核心 Chain：提示词 -> 模型 -> 结构化元数据 ==========
-# with_structured_output 会让模型按 MemoryRecord 的字段返回，
-# 拿到的直接就是 Pydantic 对象，不需要手动 json.loads
+
+
 memory_chain = prompt | llm.with_structured_output(MemoryRecord)
 
 #切割文本函数
@@ -87,6 +90,18 @@ def process_file(path: str) -> list:
         print(f"--- 片段 {i} ---")
         print(f"原文：{information[:40]}...")
 
+        # 【回忆】编码前先去长期库翻一翻，把相关的旧记忆塞进提示词
+        old_hits = vector_store.search_similar(information, k=TOP_K)
+        if old_hits:
+            print("想起相关的旧记忆：")
+            for hit in old_hits:
+                print(f"  - {hit['summary']}（相似度 {hit['similarity']:.2f}）")
+        old_memories = (
+            "\n".join(f"- {hit['summary']}" for hit in old_hits)
+            if old_hits
+            else "（还没有想起相关的旧记忆）"
+        )
+
         # 调用 Chain：模板填参 -> 模型推理 -> 结构化输出
         record: MemoryRecord = memory_chain.invoke(
             {
@@ -95,6 +110,7 @@ def process_file(path: str) -> list:
                 "scoring_rules": SCORING_RULES,
                 "current_time": current_time,
                 "information": information,
+                "old_memories": old_memories,
             }
         )
 
@@ -102,7 +118,14 @@ def process_file(path: str) -> list:
         record.timestamp = current_time
 
         record.raw_content = information
-        record.repeat_count = 1  # 重复判断还没做，先都记成 1
+        record.repeat_count = 1  # 新出现的事，先记成第 1 次
+
+        # 【判重】长期库里已经有同一件事，就只把重复次数加一，不再写新记忆
+        hit = vector_store.find_repeat(record.summary)
+        if hit:
+            vector_store.add_repeat(hit)
+            print(f"判重：和已存的「{hit['summary'][:30]}...」是同一件事，重复次数 +1\n")
+            continue
 
         # 【写入短期记忆】落盘到 JSON 记忆库
         short_memory_store.append_record(record)
